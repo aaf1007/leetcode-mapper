@@ -1,3 +1,4 @@
+import { CATEGORY_BY_ID } from './categories';
 import { NEETCODE_150 } from './neetcode150';
 import type { CategoryId, Overrides, Problem } from './types';
 
@@ -37,8 +38,9 @@ const RULES: Rule[] = [
 ];
 
 export function classify(problem: Problem, overrides: Overrides = {}): CategoryId {
+  // Ignore saved moves to a topic that no longer exists (e.g. renamed in an update).
   const manual = overrides[problem.titleSlug];
-  if (manual) return manual;
+  if (manual && Object.hasOwn(CATEGORY_BY_ID, manual)) return manual;
   const neet = NEETCODE_150[problem.titleSlug];
   if (neet) return neet;
   const tags = new Set(problem.tags);

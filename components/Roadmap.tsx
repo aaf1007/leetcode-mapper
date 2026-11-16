@@ -31,16 +31,31 @@ export function Roadmap({ counts, selected, onSelect }: Props) {
   const viewport = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ x: 0, y: 0, scale: 1 });
   const drag = useRef<{ px: number; py: number; x: number; y: number } | null>(null);
+  // Once you pan or zoom, resizing the window no longer re-fits the map.
+  const moved = useRef(false);
 
   const fit = () => {
     const el = viewport.current;
     if (!el) return;
+    moved.current = false;
     const pad = 32;
-    const scale = clamp(Math.min((el.clientWidth - pad * 2) / CANVAS_W, (el.clientHeight - pad * 2) / CANVAS_H, 1));
-    setView({ scale, x: (el.clientWidth - CANVAS_W * scale) / 2, y: pad });
+    const left = 64; // keep nodes clear of the zoom controls
+    const availW = el.clientWidth - left - pad;
+    const scale = clamp(Math.min(availW / CANVAS_W, (el.clientHeight - pad * 2) / CANVAS_H, 1));
+    setView({ scale, x: left + (availW - CANVAS_W * scale) / 2, y: pad });
   };
 
   useLayoutEffect(fit, []);
+
+  useEffect(() => {
+    const el = viewport.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      if (!moved.current) fit();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Wheel and zoom shortcuts must be native, non-passive listeners: React's onWheel is passive,
   // so it can't stop Chrome from zooming the whole page on pinch / ctrl+wheel / ⌘±.
@@ -56,6 +71,7 @@ export function Roadmap({ counts, selected, onSelect }: Props) {
         const rect = el.getBoundingClientRect();
         zoomBy(Math.exp(-dy * 0.01), e.clientX - rect.left, e.clientY - rect.top);
       } else {
+        moved.current = true;
         setView((v) => ({ ...v, x: v.x - e.deltaX * px, y: v.y - e.deltaY * px }));
       }
     };
@@ -81,6 +97,7 @@ export function Roadmap({ counts, selected, onSelect }: Props) {
     if (!el) return;
     const px = cx ?? el.clientWidth / 2;
     const py = cy ?? el.clientHeight / 2;
+    moved.current = true;
     setView((v) => {
       const scale = clamp(v.scale * factor);
       const k = scale / v.scale;
@@ -102,6 +119,7 @@ export function Roadmap({ counts, selected, onSelect }: Props) {
       onPointerMove={(e) => {
         const d = drag.current;
         if (!d) return;
+        moved.current = true;
         setView((v) => ({ ...v, x: d.x + e.clientX - d.px, y: d.y + e.clientY - d.py }));
       }}
       onPointerUp={() => (drag.current = null)}

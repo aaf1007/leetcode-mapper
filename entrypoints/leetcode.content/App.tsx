@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ProblemPanel } from '@/components/ProblemPanel';
+import { DevDataToggle } from '@/components/DevDataToggle';
 import { Roadmap, type Counts } from '@/components/Roadmap';
+import { currentDataMode } from '@/lib/dev/dataMode';
 import { StatsCard } from '@/components/StatsCard';
 import { useOverrides } from '@/hooks/useOverrides';
-import { fetchList } from '@/lib/api';
+import { fetchList, type ListResult } from '@/lib/api';
 import { CATEGORIES } from '@/lib/categories';
 import { classify } from '@/lib/classify';
+import { fmt } from '@/lib/format';
 import type { CategoryId, Problem } from '@/lib/types';
 
-type Load = { state: 'loading' } | { state: 'error'; message: string } | { state: 'ready'; problems: Problem[] };
+type Load =
+  | { state: 'loading'; loaded: number; total: number | null }
+  | { state: 'error'; message: string }
+  | ({ state: 'ready' } & ListResult);
 
 export function App({ slug }: { slug: string | null }) {
   const [open, setOpen] = useState(false);
@@ -26,6 +32,7 @@ export function App({ slug }: { slug: string | null }) {
   }, [open]);
 
   if (!slug) return null;
+  const dataMode = import.meta.env.DEV ? currentDataMode() : 'live';
   return (
     <>
       {!open && (
@@ -33,13 +40,15 @@ export function App({ slug }: { slug: string | null }) {
           <span aria-hidden>🗺</span> Roadmap
         </button>
       )}
-      {open && <Overlay slug={slug} onClose={() => setOpen(false)} />}
+      {open && <Overlay key={dataMode} slug={slug} onClose={() => setOpen(false)} />}
+      {import.meta.env.DEV && <DevDataToggle mode={dataMode} />}
     </>
   );
 }
 
 function Overlay({ slug, onClose }: { slug: string; onClose: () => void }) {
-  const [load, setLoad] = useState<Load>({ state: 'loading' });
+  const [load, setLoad] = useState<Load>({ state: 'loading', loaded: 0, total: null });
+  const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<CategoryId | null>(null);
   const { overrides, move } = useOverrides();
   const root = useRef<HTMLDivElement>(null);
@@ -57,14 +66,15 @@ function Overlay({ slug, onClose }: { slug: string; onClose: () => void }) {
   useEffect(() => {
     root.current?.focus();
     let cancelled = false;
-    fetchList(slug).then(
-      (problems) => !cancelled && setLoad({ state: 'ready', problems }),
+    setLoad({ state: 'loading', loaded: 0, total: null });
+    fetchList(slug, (loaded, total) => !cancelled && setLoad({ state: 'loading', loaded, total })).then(
+      (result) => !cancelled && setLoad({ state: 'ready', ...result }),
       (e: unknown) => !cancelled && setLoad({ state: 'error', message: e instanceof Error ? e.message : String(e) }),
     );
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, attempt]);
 
   const problems = load.state === 'ready' ? load.problems : [];
 
@@ -97,19 +107,36 @@ function Overlay({ slug, onClose }: { slug: string; onClose: () => void }) {
       }}
     >
       <header className="lcm-header">
-        <span className="lcm-header__title">Roadmap · {slug}</span>
+        <span className="lcm-header__title">
+          Roadmap{load.state === 'ready' ? ` · ${load.name ?? slug}` : ''}
+        </span>
         <button type="button" className="lcm-close" onClick={onClose} aria-label="Close roadmap">
           ✕
         </button>
       </header>
-      {load.state === 'loading' && <div className="lcm-message">Loading problems…</div>}
-      {load.state === 'error' && <div className="lcm-message lcm-message--error">{load.message}</div>}
-      {load.state === 'ready' && (
+      {load.state === 'loading' && (
+        <div className="lcm-message">
+          {load.total ? `Loading ${fmt(load.loaded)} of ${fmt(load.total)} problems…` : 'Loading problems…'}
+        </div>
+      )}
+      {load.state === 'error' && (
+        <div className="lcm-message">
+          <p className="lcm-message--error">{load.message}</p>
+          <button type="button" className="lcm-retry" onClick={() => setAttempt((n) => n + 1)}>
+            Try again
+          </button>
+        </div>
+      )}
+      {load.state === 'ready' && problems.length === 0 && (
+        <div className="lcm-message">This list has no problems yet.</div>
+      )}
+      {load.state === 'ready' && problems.length > 0 && (
         <div className="lcm-body">
           <Roadmap counts={counts} selected={selected} onSelect={setSelected} />
           <aside className="lcm-side">
             <StatsCard problems={problems} />
             <ProblemPanel
+              key={selected ?? 'none'}
               category={selected}
               problems={selected ? byCategory[selected] : []}
               movedSlugs={movedSlugs}

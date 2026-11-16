@@ -38,7 +38,7 @@ select {
 
 .lcm-toggle {
   position: fixed;
-  right: 24px;
+  left: 24px;
   bottom: 24px;
   z-index: 2147483000;
   display: flex;
@@ -94,12 +94,29 @@ select {
 
 .lcm-message {
   margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 480px;
+  padding: 0 24px;
+  text-align: center;
   color: var(--lcm-muted);
+  font-variant-numeric: tabular-nums;
 }
 .lcm-message--error {
+  margin: 0;
   color: var(--lcm-hard);
-  max-width: 480px;
-  text-align: center;
+}
+.lcm-retry {
+  padding: 8px 16px;
+  border: 1px solid var(--lcm-border);
+  border-radius: 8px;
+  background: var(--lcm-card);
+  cursor: pointer;
+}
+.lcm-retry:hover {
+  background: var(--lcm-border);
 }
 
 .lcm-body {
@@ -212,13 +229,16 @@ select {
 }
 
 .lcm-side {
-  width: 400px;
+  /* Narrows on small windows / high zoom so the map keeps most of the space. */
+  width: clamp(260px, 28%, 400px);
+  container-type: inline-size;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 16px;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: hidden;
 }
 .lcm-card {
   background: var(--lcm-card);
@@ -235,9 +255,11 @@ select {
 }
 
 .lcm-stats {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 .lcm-stats__rows {
   display: flex;
@@ -276,34 +298,57 @@ select {
   color: var(--lcm-hard);
 }
 
-.lcm-panel__title {
-  margin: 0 0 12px;
-  font-size: 16px;
-}
-.lcm-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.lcm-panel {
+  flex: 0 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
+.lcm-panel__title {
+  flex-shrink: 0;
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.lcm-panel__list {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
 .lcm-row {
   display: grid;
-  grid-template-columns: 18px 1fr auto auto auto;
-  align-items: center;
-  gap: 8px;
+  grid-template-columns: 16px auto minmax(0, 1fr) auto auto;
+  align-items: start;
+  column-gap: 8px;
   padding: 8px 0;
   border-top: 1px solid var(--lcm-border);
+  line-height: 20px;
 }
-.lcm-row:first-child {
+.lcm-row--first {
   border-top: none;
+}
+.lcm-row__id {
+  min-width: 5ch;
+  text-align: right;
+  color: var(--lcm-muted);
+  font-variant-numeric: tabular-nums;
+}
+.lcm-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.lcm-lock {
+  font-size: 11px;
 }
 .lcm-row__title {
   color: var(--lcm-text);
   text-decoration: none;
+  /* Wrap to two lines: many titles share long openings, so cutting them off makes rows identical. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .lcm-row__title:hover {
   color: var(--lcm-accent);
@@ -347,4 +392,70 @@ select {
 }
 .lcm-reset:hover {
   color: var(--lcm-text);
+}
+
+/* Dev-only data toggle (components/DevDataToggle.tsx). Plain chrome, not part of the design. */
+.lcm-devtoggle {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 2147483001;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: #d4d4d8;
+  font: 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.lcm-devtoggle button {
+  border: none;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: transparent;
+  color: #3f3f46;
+  font: inherit;
+  cursor: pointer;
+}
+.lcm-devtoggle .lcm-devtoggle__on {
+  background: #fff;
+  color: #18181b;
+}
+
+/* Narrow side panel (small window or high zoom): the id moves into the title and the
+   difficulty drops under it, so the title keeps most of the row. */
+@container (max-width: 340px) {
+  .lcm-stats {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .lcm-stats__total {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: center;
+    gap: 4px;
+  }
+  .lcm-row {
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+  }
+  .lcm-row__id {
+    display: none;
+  }
+  .lcm-row__title::before {
+    content: attr(data-id) '. ';
+    color: var(--lcm-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .lcm-row .lcm-diff {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .lcm-row__actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .lcm-row__title {
+    -webkit-line-clamp: 3;
+  }
 }

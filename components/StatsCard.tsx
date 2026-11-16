@@ -1,3 +1,4 @@
+import { fmt } from '@/lib/format';
 import type { Difficulty, Problem } from '@/lib/types';
 
 const ROWS: { key: Difficulty; label: string }[] = [
@@ -18,15 +19,15 @@ export function StatsCard({ problems }: { problems: Problem[] }) {
             <div key={key} className="lcm-stats__row">
               <span className={`lcm-diff lcm-diff--${key.toLowerCase()}`}>{label}</span>
               <span>
-                {done}/{all.length}
+                {fmt(done)}/{fmt(all.length)}
               </span>
             </div>
           );
         })}
       </div>
       <div className="lcm-stats__total">
-        <span className="lcm-stats__big">{solved}</span>
-        <span className="lcm-muted">/{problems.length} Solved</span>
+        <span className="lcm-stats__big">{fmt(solved)}</span>
+        <span className="lcm-muted">/{fmt(problems.length)} Solved</span>
       </div>
     </div>
   );

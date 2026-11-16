@@ -1,4 +1,5 @@
 import { NODE_H, NODE_W, type Category } from '@/lib/categories';
+import { fmt } from '@/lib/format';
 
 interface Props {
   category: Category;
@@ -17,7 +18,7 @@ export function TopicNode({ category, total, solved, selected, onSelect }: Props
       style={{ left: category.x - NODE_W / 2, top: category.y, width: NODE_W, minHeight: NODE_H }}
       onClick={onSelect}
       onPointerDown={(e) => e.stopPropagation()}
-      title={`${solved}/${total} solved`}
+      title={`${fmt(solved)} of ${fmt(total)} solved`}
     >
       <span className="lcm-node__label">{category.label}</span>
       <span className="lcm-node__progress">
@@ -25,7 +26,7 @@ export function TopicNode({ category, total, solved, selected, onSelect }: Props
           <span className="lcm-node__fill" style={{ width: `${pct}%` }} />
         </span>
         <span className="lcm-node__count">
-          {solved}/{total}
+          {fmt(solved)}/{fmt(total)}
         </span>
       </span>
     </button>

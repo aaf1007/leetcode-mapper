@@ -58,6 +58,11 @@ describe('classify', () => {
   it('manual overrides beat everything', () => {
     expect(classify(p('two-sum', 'Two Sum', ['array']), { 'two-sum': 'greedy' })).toBe('greedy');
   });
+
+  it('ignores overrides pointing at a topic that no longer exists', () => {
+    const stale = { 'two-sum': 'hashing' } as unknown as Parameters<typeof classify>[1];
+    expect(classify(p('two-sum', 'Two Sum', ['array']), stale)).toBe('arrays');
+  });
 });
 
 describe('NEETCODE_150', () => {

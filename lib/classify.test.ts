@@ -22,6 +22,8 @@ describe('classify', () => {
     expect(
       classify(p('course-schedule-ii', 'Course Schedule II', ['depth-first-search', 'graph', 'topological-sort'])),
     ).toBe('graphs');
+    // NeetCode moved this from Stack to Backtracking.
+    expect(classify(p('generate-parentheses', 'Generate Parentheses', ['string', 'dynamic-programming', 'backtracking']))).toBe('backtracking');
   });
 
   it('falls back to tag-priority rules', () => {

@@ -31,7 +31,6 @@ const BY_CATEGORY: Record<Exclude<CategoryId, 'other'>, string[]> = {
     'valid-parentheses',
     'min-stack',
     'evaluate-reverse-polish-notation',
-    'generate-parentheses',
     'daily-temperatures',
     'car-fleet',
     'largest-rectangle-in-histogram',
@@ -94,6 +93,7 @@ const BY_CATEGORY: Record<Exclude<CategoryId, 'other'>, string[]> = {
     'palindrome-partitioning',
     'letter-combinations-of-a-phone-number',
     'n-queens',
+    'generate-parentheses',
   ],
   tries: ['implement-trie-prefix-tree', 'design-add-and-search-words-data-structure', 'word-search-ii'],
   graphs: [

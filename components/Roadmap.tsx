@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CANVAS_H, CANVAS_W, CATEGORIES, CATEGORY_BY_ID, NODE_H, type Category } from '@/lib/categories';
 import type { CategoryId } from '@/lib/types';
 import { TopicNode } from './TopicNode';
@@ -42,6 +42,40 @@ export function Roadmap({ counts, selected, onSelect }: Props) {
 
   useLayoutEffect(fit, []);
 
+  // Wheel and zoom shortcuts must be native, non-passive listeners: React's onWheel is passive,
+  // so it can't stop Chrome from zooming the whole page on pinch / ctrl+wheel / ⌘±.
+  useEffect(() => {
+    const el = viewport.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const px = e.deltaMode === 1 ? 16 : 1; // line-based mouse wheels
+      if (e.ctrlKey || e.metaKey) {
+        // Trackpad pinch arrives as ctrl+wheel. Cap per-event step so a mouse wheel tick isn't huge.
+        const dy = Math.max(-30, Math.min(30, e.deltaY * px));
+        const rect = el.getBoundingClientRect();
+        zoomBy(Math.exp(-dy * 0.01), e.clientX - rect.left, e.clientY - rect.top);
+      } else {
+        setView((v) => ({ ...v, x: v.x - e.deltaX * px, y: v.y - e.deltaY * px }));
+      }
+    };
+    // Capture phase on window: WXT stops key events from bubbling out of the shadow root.
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key === '=' || e.key === '+') zoomBy(1.2);
+      else if (e.key === '-') zoomBy(1 / 1.2);
+      else if (e.key === '0') fit();
+      else return;
+      e.preventDefault();
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('keydown', onKey, { capture: true });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      window.removeEventListener('keydown', onKey, { capture: true });
+    };
+  }, []);
+
   const zoomBy = (factor: number, cx?: number, cy?: number) => {
     const el = viewport.current;
     if (!el) return;
@@ -72,10 +106,6 @@ export function Roadmap({ counts, selected, onSelect }: Props) {
       }}
       onPointerUp={() => (drag.current = null)}
       onPointerCancel={() => (drag.current = null)}
-      onWheel={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        zoomBy(e.deltaY < 0 ? 1.1 : 1 / 1.1, e.clientX - rect.left, e.clientY - rect.top);
-      }}
     >
       <div
         className="lcm-canvas"

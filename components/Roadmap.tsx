@@ -23,6 +23,7 @@ function edgePath(from: Category, to: Category): string {
   return `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
 }
 
+const DOT_GAP = 22;
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 2;
 const clamp = (v: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, v));
@@ -112,6 +113,10 @@ export function Roadmap({ counts, selected, onSelect }: Props) {
     <div
       ref={viewport}
       className="lcm-viewport"
+      style={{
+        backgroundSize: `${DOT_GAP * view.scale}px ${DOT_GAP * view.scale}px`,
+        backgroundPosition: `${view.x}px ${view.y}px`,
+      }}
       onPointerDown={(e) => {
         drag.current = { px: e.clientX, py: e.clientY, x: view.x, y: view.y };
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -151,13 +156,19 @@ export function Roadmap({ counts, selected, onSelect }: Props) {
       </div>
       <div className="lcm-zoom" onPointerDown={(e) => e.stopPropagation()}>
         <button type="button" onClick={() => zoomBy(1.2)} aria-label="Zoom in">
-          +
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+            <path d="M7 2.5v9M2.5 7h9" strokeLinecap="round" />
+          </svg>
         </button>
         <button type="button" onClick={() => zoomBy(1 / 1.2)} aria-label="Zoom out">
-          −
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+            <path d="M2.5 7h9" strokeLinecap="round" />
+          </svg>
         </button>
         <button type="button" onClick={fit} aria-label="Fit to screen">
-          ⤢
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+            <path d="M2 5V2h3M9 2h3v3M12 9v3H9M5 12H2V9" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </button>
       </div>
     </div>

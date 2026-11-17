@@ -12,8 +12,14 @@ interface Raw {
   status: S;
   title: string;
   titleSlug: string;
-  topicTags: { slug: string }[];
+  acRate: number | null;
+  frequency: number | null;
+  contestPoint: number | null;
+  topicTags: { slug: string }[]; // no names, so the slug fallback gets exercised
 }
+
+// Stable pseudo-random 0..1 per id, so sort results don't change between reloads.
+const seeded = (id: string, salt: number) => ((Number(id) * 9301 + salt * 49297) % 233280) / 233280;
 
 const q = (id: string, title: string, difficulty: D, status: S, tags: string[], paidOnly = false): Raw => ({
   difficulty,
@@ -22,6 +28,10 @@ const q = (id: string, title: string, difficulty: D, status: S, tags: string[], 
   status,
   title,
   titleSlug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+  acRate: 0.25 + seeded(id, 1) * 0.6, // a fraction, like LeetCode sends
+  // Premium-only fields: missing on about a third of problems, as for a free account.
+  frequency: seeded(id, 2) < 0.33 ? null : Math.round(seeded(id, 3) * 1000) / 10,
+  contestPoint: seeded(id, 4) < 0.5 ? null : Math.round(3 + seeded(id, 5) * 9),
   topicTags: tags.map((slug) => ({ slug })),
 });
 
@@ -71,7 +81,7 @@ const DATA: Partial<Record<DataMode, Raw[]>> = { worst: WORST, empty: [], one: O
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** A fake GraphQL `Response` for the selected mode, or null to hit the real network. */
-export async function devResponse(skip: number, limit: number): Promise<Response | null> {
+export async function devResponse(skip: number, limit: number, sortBy?: { sortField: string }): Promise<Response | null> {
   const mode = currentDataMode();
   if (mode === 'live') return null;
   if (mode === 'loading') return new Promise<Response>(() => {});
@@ -80,7 +90,9 @@ export async function devResponse(skip: number, limit: number): Promise<Response
     return new Response('Too Many Requests', { status: 429 });
   }
   await delay(250); // realistic per-page latency
-  const all = DATA[mode] ?? [];
+  let all = DATA[mode] ?? [];
+  // "Last submitted" order: a fixed shuffle, so it differs from list order.
+  if (sortBy?.sortField === 'LAST_SUBMITTED_TIME') all = [...all].sort((a, b) => seeded(a.questionFrontendId, 6) - seeded(b.questionFrontendId, 6));
   const questions = all.slice(skip, skip + limit);
   const body = { data: { favoriteQuestionList: { questions, totalLength: all.length, hasMore: skip + limit < all.length } } };
   return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });

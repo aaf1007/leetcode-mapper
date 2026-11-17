@@ -5,11 +5,13 @@ import { Roadmap, type Counts } from '@/components/Roadmap';
 import { currentDataMode } from '@/lib/dev/dataMode';
 import { StatsCard } from '@/components/StatsCard';
 import { useOverrides } from '@/hooks/useOverrides';
-import { fetchList, type ListResult } from '@/lib/api';
+import { useShowTags, useSort } from '@/hooks/useSort';
+import { useLeetCodeTheme, type Theme } from '@/hooks/useLeetCodeTheme';
+import { fetchLastSubmittedOrder, fetchList, type ListResult } from '@/lib/api';
 import { CATEGORIES } from '@/lib/categories';
 import { classify } from '@/lib/classify';
 import { fmt } from '@/lib/format';
-import type { CategoryId, Problem } from '@/lib/types';
+import type { CategoryId, LastSubmitted, Problem } from '@/lib/types';
 
 type Load =
   | { state: 'loading'; loaded: number; total: number | null }
@@ -18,6 +20,7 @@ type Load =
 
 export function App({ slug }: { slug: string | null }) {
   const [open, setOpen] = useState(false);
+  const theme = useLeetCodeTheme();
 
   // Close the overlay when navigating to a non-list page or another list.
   useEffect(() => setOpen(false), [slug]);
@@ -36,21 +39,30 @@ export function App({ slug }: { slug: string | null }) {
   return (
     <>
       {!open && (
-        <button type="button" className="lcm-toggle" onClick={() => setOpen(true)}>
-          <span aria-hidden>🗺</span> Roadmap
+        <button type="button" className="lcm-toggle" data-theme={theme} onClick={() => setOpen(true)}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+            <rect x="5.5" y="1.5" width="5" height="3.5" rx="1" />
+            <rect x="1.5" y="11" width="5" height="3.5" rx="1" />
+            <rect x="9.5" y="11" width="5" height="3.5" rx="1" />
+            <path d="M8 5v3M4 11V8h8v3" />
+          </svg>
+          Roadmap
         </button>
       )}
-      {open && <Overlay key={dataMode} slug={slug} onClose={() => setOpen(false)} />}
+      {open && <Overlay key={dataMode} slug={slug} theme={theme} onClose={() => setOpen(false)} />}
       {import.meta.env.DEV && <DevDataToggle mode={dataMode} />}
     </>
   );
 }
 
-function Overlay({ slug, onClose }: { slug: string; onClose: () => void }) {
+function Overlay({ slug, theme, onClose }: { slug: string; theme: Theme; onClose: () => void }) {
   const [load, setLoad] = useState<Load>({ state: 'loading', loaded: 0, total: null });
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<CategoryId | null>(null);
   const { overrides, move } = useOverrides();
+  const [sort, setSort] = useSort();
+  const [showTags, setShowTags] = useShowTags();
+  const [lastSubmitted, setLastSubmitted] = useState<LastSubmitted>(null);
   const root = useRef<HTMLDivElement>(null);
 
   // Esc closes the overlay. Keys pressed inside the shadow root are handled by onKeyDown below
@@ -78,6 +90,14 @@ function Overlay({ slug, onClose }: { slug: string; onClose: () => void }) {
 
   const problems = load.state === 'ready' ? load.problems : [];
 
+  // Not cancelled on re-render: setting 'loading' re-runs this effect, and the overlay remounts per list.
+  const wantLastSubmitted = sort.key === 'lastSubmitted' && load.state === 'ready';
+  useEffect(() => {
+    if (!wantLastSubmitted || lastSubmitted !== null) return;
+    setLastSubmitted('loading');
+    fetchLastSubmittedOrder(slug).then(setLastSubmitted, () => setLastSubmitted('error'));
+  }, [wantLastSubmitted, lastSubmitted, slug]);
+
   const byCategory = useMemo(() => {
     const groups = Object.fromEntries(CATEGORIES.map((c) => [c.id, [] as Problem[]])) as Record<CategoryId, Problem[]>;
     for (const p of problems) groups[classify(p, overrides)].push(p);
@@ -101,6 +121,7 @@ function Overlay({ slug, onClose }: { slug: string; onClose: () => void }) {
     <div
       ref={root}
       className="lcm-overlay"
+      data-theme={theme}
       tabIndex={-1}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
@@ -111,7 +132,9 @@ function Overlay({ slug, onClose }: { slug: string; onClose: () => void }) {
           Roadmap{load.state === 'ready' ? ` · ${load.name ?? slug}` : ''}
         </span>
         <button type="button" className="lcm-close" onClick={onClose} aria-label="Close roadmap">
-          ✕
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+            <path d="M3 3l8 8M11 3l-8 8" strokeLinecap="round" />
+          </svg>
         </button>
       </header>
       {load.state === 'loading' && (
@@ -141,6 +164,12 @@ function Overlay({ slug, onClose }: { slug: string; onClose: () => void }) {
               problems={selected ? byCategory[selected] : []}
               movedSlugs={movedSlugs}
               onMove={move}
+              sort={sort}
+              onSort={setSort}
+              lastSubmitted={lastSubmitted}
+              onRetryLastSubmitted={() => setLastSubmitted(null)}
+              showTags={showTags}
+              onShowTags={setShowTags}
             />
           </aside>
         </div>

@@ -12,6 +12,10 @@ const p = (titleSlug: string, title: string, tags: string[]): Problem => ({
   status: 'TO_DO',
   paidOnly: false,
   tags,
+  tagNames: tags,
+  acRate: null,
+  frequency: null,
+  contestPoint: null,
 });
 
 describe('classify', () => {

@@ -2,3 +2,6 @@ node_modules
 .output
 .wxt
 web-ext.config.ts
+
+# Chrome Web Store upload files
+store/

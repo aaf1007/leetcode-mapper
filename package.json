@@ -1,6 +1,6 @@
 {
   "name": "leetcode-roadmap",
-  "description": "Turn any LeetCode problem list into a NeetCode-style topic roadmap",
+  "description": "See any LeetCode problem list as a topic roadmap, with your progress per topic.",
   "private": true,
   "version": "0.1.0",
   "type": "module",
